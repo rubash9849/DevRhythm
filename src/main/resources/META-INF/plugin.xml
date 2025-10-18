@@ -1,0 +1,73 @@
+<idea-plugin>
+    <id>com.devrhythm.devrhythm</id>
+    <name>DevRhythm</name>
+    <version>1.0.0</version>
+
+    <!-- ✅ Vendor / Publisher -->
+    <vendor email="john.edwards@usu.edu" url="https://edwardsjohnmartin.github.io/people/index.html">
+        Dr. John Edwards – Utah State University
+    </vendor>
+
+    <!-- ✅ Compatibility: PyCharm 2023.1 (231.*) → 2025.2 (252.*) -->
+    <idea-version since-build="231" until-build="252.*"/>
+
+    <!-- ✅ Core + PyCharm modules -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>PythonCore</depends>
+
+    <!-- ✅ Description and known issue -->
+    <description><![CDATA[
+        <h2>DevRhythm — Understanding Coding Rhythm in Programming Courses</h2>
+
+        <p><b>DevRhythm</b> is a lightweight PyCharm/IntelliJ plugin developed for research on
+        programmer activity rhythms and self-regulated learning behavior.
+        It records coding and idle events to help analyze work–rest balance during programming sessions.</p>
+
+        <ul>
+            <li>Tracks active vs idle time in real time</li>
+            <li>Logs data to a <code>.devrhythm</code> folder in each project</li>
+            <li>Displays a live status-bar indicator</li>
+            <li>Works on Windows, macOS, and Linux</li>
+        </ul>
+
+        <h3>Research Team</h3>
+        <p>Developed by <b>Rubash Mali</b>, under the supervision of <b>Dr. John Edwards</b>
+        at Utah State University.</p>
+
+        <h3>⚠️ Known Data / Disposable Leak</h3>
+        <p>This version may show a harmless <code>Disposable leak</code> warning during IDE shutdown.
+        It does <b>not</b> affect performance, stability, or user data and is documented for transparency.</p>
+    ]]></description>
+
+    <change-notes><![CDATA[
+        <ul>
+            <li>Initial research release of DevRhythm.</li>
+            <li>Implements real-time activity logging and status-bar feedback.</li>
+            <li>Known non-blocking disposable/data leak warning on IDE exit.</li>
+        </ul>
+    ]]></change-notes>
+
+    <!-- ✅ Extensions -->
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Status bar widget -->
+        <statusBarWidgetFactory
+                id="com.devrhythm.statusbar"
+                implementation="com.devrhythm.DevRhythmStatusBarWidgetFactory"/>
+
+        <!-- Tracker startup -->
+        <postStartupActivity
+                implementation="com.devrhythm.IdleTracker"/>
+
+        <!-- Balloon notifications -->
+        <notificationGroup
+                id="DevRhythm"
+                displayType="BALLOON"
+                isLogByDefault="false"/>
+    </extensions>
+
+    <icon>icons/pluginIcon.svg</icon>
+
+    <vendorLogo>icons/pluginIcon.svg</vendorLogo>
+
+
+</idea-plugin>

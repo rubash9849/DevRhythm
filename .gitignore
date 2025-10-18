@@ -1,0 +1,21 @@
+# IntelliJ / PyCharm
+.idea/
+*.iml
+out/
+
+# Build artifacts
+build/
+.gradle/
+
+# Sandbox runtime
+sandbox/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Kotlin build cache
+*.kotlin_module

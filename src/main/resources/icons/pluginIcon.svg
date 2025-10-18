@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+  <!-- left code chevron -->
+  <path d="M5.8 3 L3.1 6.5 L5.8 10" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- right code chevron -->
+  <path d="M10.2 3 L12.9 6.5 L10.2 10" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- flow curve -->
+  <path d="M1.5 12.5 C4.9 12.5 6.8 8.5 9.8 8.5 C12.8 8.5 13.8 12.5 14.5 12.5"
+        stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
