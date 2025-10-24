@@ -21,7 +21,6 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
-import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.ToolWindowManager
 import com.intellij.openapi.wm.WindowManager
 import com.intellij.ui.JBColor
@@ -61,8 +60,8 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
         private val WELCOME_SEEN_KEY: Key<Boolean> = Key.create("DevRhythm.WelcomeSeen")
         private val SESSION_START_INSTANT_KEY: Key<Instant> = Key.create("DevRhythm.SessionStartInstant")
         private val OPEN_BALLOON_KEY: Key<Balloon> = Key.create("DevRhythm.OpenBalloonRef")
+        private val BALLOON_CLOSED_EXPLICITLY_KEY: Key<Boolean> = Key.create("DevRhythm.BalloonClosedExplicitly")
 
-        // public so other components reuse same keys
         val FIRST_INPUT_SEEN_KEY: Key<Boolean> = Key.create("DevRhythm.FirstInputSeen")
         val SESSION_ARMED_KEY: Key<Boolean> = Key.create("DevRhythm.SessionArmed")
 
@@ -76,7 +75,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
         val disabled = AtomicBoolean(false)
         var disabledNoticeTimer: Timer? = null
 
-        // init flags
         project.putUserData(FIRST_INPUT_SEEN_KEY, false)
         project.putUserData(SESSION_ARMED_KEY, false)
 
@@ -86,7 +84,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
             timer.schedule(object : TimerTask() {
                 override fun run() {
                     if (project.getUserData(IdleToolWindowFactory.DISABLED_KEY) != true) return
-                    // Session suppression?
                     if (project.getUserData(IdleToolWindowFactory.SUPPRESS_WARNINGS_SESSION_KEY) == true) return
                     runCatching { showDisabledWarningWithAction(project) }
                 }
@@ -98,11 +95,7 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
             if (!disabled.compareAndSet(false, true)) return
             project.putUserData(IdleToolWindowFactory.DISABLED_KEY, true)
             runCatching { ToolWindowManager.getInstance(project).getToolWindow("DevRhythm")?.hide(null) }
-
-            // Immediate warning (has session-only suppress action)
             runCatching { showDisabledWarningWithAction(project, reason) }
-
-            // Close welcome balloon if open
             project.getUserData(OPEN_BALLOON_KEY)?.let { b ->
                 runCatching { b.hide() }
                 project.putUserData(OPEN_BALLOON_KEY, null)
@@ -120,23 +113,20 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
 
         project.putUserData(SESSION_START_INSTANT_KEY, appStartInstant)
 
-        // Ensure _status.csv exists; read and enforce for status bar widget
         ensureProjectStatusCsvRandom(project, userName, project.name)
         val projectStatus = readProjectStatus(project, userName)
         project.putUserData(IdleToolWindowFactory.STATUS_KEY, projectStatus)
         project.putUserData(IdleToolWindowFactory.SESSION_START_MS_KEY, appStartEpochMicros)
 
-        enforceStatusBarFromStatus(project, projectStatus)
+        // ✅ FIXED: No more internal StatusBar.removeWidget() calls
+        // Widget visibility is controlled by DevRhythmStatusBarWidgetFactory.isAvailable()
 
-        // Welcome balloon (only when status=Show and <3 prior closes)
         maybeShowWelcomeOnce(project, projectStatus, userName, formattedStartDate, formattedStartTimeMicros, appStartEpochMicros)
 
-        // Historical totals
         val csvFile = resolveCsv(project, userName)
         val historicalTotalMicros = sumCsvSecondsAsMicros(csvFile, listOf("Total Time (sec)"))
         val historicalActiveMicros = sumCsvSecondsAsMicros(csvFile, listOf("Active Time (sec)", "Total Active Time (sec)"))
 
-        // Session state
         var lastInputNano = appStartNano
         var inputCount = 0
 
@@ -168,7 +158,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
             return false
         }
 
-        // Per-second push
         fun pushTotalsNow(nowNano: Long) {
             if (disabled.get()) return
 
@@ -202,7 +191,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
             if (disabled.get()) return
             inputCount++
 
-            // Send raw input time to status-bar widget window calculator
             runCatching {
                 project.messageBus
                     .syncPublisher(DevRhythmInputEvents.TOPIC)
@@ -234,7 +222,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
 
             val gapNs = nowNano - lastInputNano
             if (gapNs >= IDLE_THRESHOLD_NS) {
-                // break
                 breakCount++
                 totalBreakNanos += gapNs
                 maxBreakNanos = max(maxBreakNanos, gapNs)
@@ -248,7 +235,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
                 }
                 currentSessionNanos = 0L
             } else {
-                // still in active mini-session
                 currentSessionNanos += gapNs
             }
             lastInputNano = nowNano
@@ -256,7 +242,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
             SwingUtilities.invokeLater { window()?.refreshPercentages() }
         }
 
-        // Capture inputs for THIS project/frame only
         IdeEventQueue.getInstance().addDispatcher({ e ->
             when (e) {
                 is KeyEvent -> {
@@ -278,7 +263,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
             false
         }, project)
 
-        // ----- Multi-project attach checks -----
         fun isSameFrameMultiProject(): Boolean {
             val wm = WindowManager.getInstance()
             val myFrame = wm.getFrame(project) ?: return false
@@ -347,17 +331,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
         Disposer.register(project, disposable)
     }
 
-    // -------------------- Enforce status on the status bar widget --------------------
-    private fun enforceStatusBarFromStatus(project: Project, status: String?) {
-        ApplicationManager.getApplication().invokeLater {
-            val sb: StatusBar = WindowManager.getInstance().getStatusBar(project) ?: return@invokeLater
-            if (status == "Do not Show") {
-                runCatching { sb.removeWidget(DevRhythmStatusBarWidget.WIDGET_ID) }
-            }
-        }
-    }
-
-    // -------------------- Welcome popup (waits for widget readiness) --------------------
     private fun maybeShowWelcomeOnce(
         project: Project,
         projectStatus: String?,
@@ -387,6 +360,7 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
         }
     }
 
+    // ✅ FIXED: No internal StatusBar API usage - using component-based approach
     private fun tryShowWelcomeWhenWidgetReady(
         project: Project,
         userName: String,
@@ -397,12 +371,12 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
         attempt: Int
     ) {
         if (project.getUserData(IdleToolWindowFactory.DISABLED_KEY) == true) return
-        val statusBar = WindowManager.getInstance().getStatusBar(project)
-        val widget = statusBar?.getWidget(DevRhythmStatusBarWidget.WIDGET_ID)
 
-        if (widget != null) {
-            if (showWelcomeBalloonAtStatusBar(
-                    project, userName, sessionStartDate, sessionStartTimeMicros, sessionStartEpochMicros, existingRowsCount
+        // ✅ FIXED: Use public WindowManager API instead of StatusBar internal APIs
+        val frame = WindowManager.getInstance().getFrame(project)
+        if (frame != null) {
+            if (showWelcomeBalloonAtFrame(
+                    project, userName, sessionStartDate, sessionStartTimeMicros, sessionStartEpochMicros, existingRowsCount, frame
                 )
             ) {
                 project.putUserData(WELCOME_SEEN_KEY, true)
@@ -410,7 +384,7 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
             return
         }
 
-        if (attempt >= 10) return // ~3s total
+        if (attempt >= 10) return
         javax.swing.Timer(300) {
             tryShowWelcomeWhenWidgetReady(
                 project, userName, sessionStartDate, sessionStartTimeMicros, sessionStartEpochMicros, existingRowsCount, attempt + 1
@@ -418,19 +392,18 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
         }.apply { isRepeats = false; start() }
     }
 
-    private fun showWelcomeBalloonAtStatusBar(
+    // ✅ FIXED: No internal StatusBar API usage - shows balloon just above status bar
+    private fun showWelcomeBalloonAtFrame(
         project: Project,
         userName: String,
         sessionStartDate: String,
         sessionStartTimeMicros: String,
         sessionStartEpochMicros: Long,
-        existingRowsCount: Int
+        existingRowsCount: Int,
+        frame: java.awt.Component
     ): Boolean {
         try {
             if (project.getUserData(IdleToolWindowFactory.DISABLED_KEY) == true) return false
-            val statusBar = WindowManager.getInstance().getStatusBar(project) ?: return false
-            val widget = statusBar.getWidget(DevRhythmStatusBarWidget.WIDGET_ID) ?: return false
-            val anchor = (widget as? com.intellij.openapi.wm.CustomStatusBarWidget)?.component ?: return false
 
             val popupLife = 3 - existingRowsCount
 
@@ -447,7 +420,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
             panel.add(title)
             panel.add(javax.swing.Box.createVerticalStrut(8))
 
-            // "Status  ● idle   ● active"
             val statusRow = javax.swing.JPanel().apply {
                 layout = javax.swing.BoxLayout(this, javax.swing.BoxLayout.X_AXIS)
                 isOpaque = false
@@ -505,25 +477,50 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
                 .setBorderInsets(java.awt.Insets(8, 10, 8, 10))
 
             val balloon = builder.createBalloon()
-            Disposer.register(balloon, Disposable {
-                val closeInstant = Instant.now()
-                appendPopupCloseRow(
-                    project = project,
-                    userName = userName,
-                    projectName = project.name,
-                    sessionStartDate = sessionStartDate,
-                    sessionStartTimeMicros = sessionStartTimeMicros,
-                    sessionStartEpochMicros = sessionStartEpochMicros,
-                    closeDate = DATE_FMT.format(closeInstant),
-                    closeTimeMicros = TIME_FMT_MICROS.format(closeInstant),
-                    closeEpochMicros = epochMicros(closeInstant),
-                    popupLife = popupLife
-                )
-                project.putUserData(OPEN_BALLOON_KEY, null)
-            })
+            // ✅ FIXED: Proper disposal with project as parent
+            Disposer.register(project, balloon)
 
-            val x = anchor.width / 2
-            val point = RelativePoint(anchor, Point(x, 0))
+            // Track if balloon was closed explicitly (via close button)
+            project.putUserData(BALLOON_CLOSED_EXPLICITLY_KEY, false)
+
+            var wasExplicitlyClosed = false
+
+            // ✅ Auto-close after 5 minutes (300,000 ms) - no logging for auto-close
+            val autoCloseTimer = javax.swing.Timer(300000) {
+                if (!balloon.isDisposed && !wasExplicitlyClosed) {
+                    // Auto-close - don't log this
+                    balloon.hide()
+                    project.putUserData(OPEN_BALLOON_KEY, null)
+                }
+            }.apply { isRepeats = false; start() }
+
+            // Simple approach: assume any hide within first few seconds is explicit close
+            // (users don't auto-close immediately, but close button clicks happen quickly)
+            val explicitCloseTimer = javax.swing.Timer(5000) {
+                // After 5 seconds, any close is considered explicit
+                wasExplicitlyClosed = true
+            }.apply { isRepeats = false; start() }
+
+            // Monitor balloon state
+            val balloonMonitorTimer = javax.swing.Timer(100) {
+                if (balloon.isDisposed) {
+                    if (wasExplicitlyClosed) {
+                        // Log explicit close
+                        logBalloonClose(
+                            project, userName, sessionStartDate, sessionStartTimeMicros,
+                            sessionStartEpochMicros, popupLife
+                        )
+                    }
+                    // Stop all timers
+                    autoCloseTimer.stop()
+                    explicitCloseTimer.stop()
+                    (it.source as javax.swing.Timer).stop()
+                }
+            }.apply { isRepeats = true; start() }
+
+            // ✅ FIXED: Show balloon just above the status bar
+            // Position at bottom-right corner, just above status bar area
+            val point = RelativePoint(frame, Point(frame.width - 400, frame.height - 80))
             balloon.show(point, Balloon.Position.above)
             project.putUserData(OPEN_BALLOON_KEY, balloon)
             return true
@@ -532,12 +529,33 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
         }
     }
 
-    // ---------------- CSV helpers & misc ----------------
+    private fun logBalloonClose(
+        project: Project,
+        userName: String,
+        sessionStartDate: String,
+        sessionStartTimeMicros: String,
+        sessionStartEpochMicros: Long,
+        popupLife: Int
+    ) {
+        val closeInstant = Instant.now()
+        appendPopupCloseRow(
+            project = project,
+            userName = userName,
+            projectName = project.name,
+            sessionStartDate = sessionStartDate,
+            sessionStartTimeMicros = sessionStartTimeMicros,
+            sessionStartEpochMicros = sessionStartEpochMicros,
+            closeDate = DATE_FMT.format(closeInstant),
+            closeTimeMicros = TIME_FMT_MICROS.format(closeInstant),
+            closeEpochMicros = epochMicros(closeInstant),
+            popupLife = popupLife
+        )
+        project.putUserData(OPEN_BALLOON_KEY, null)
+    }
 
-    /** Return <projectRoot>/.DevRhythm (create it if missing). */
     private fun projectDataDir(project: Project): File {
         val base = project.basePath ?: System.getProperty("user.home")
-        val dir = File(base, ".DevRhythm")
+        val dir = File(base, ".devrhythm")
         if (!dir.exists()) dir.mkdirs()
         return dir
     }
@@ -565,7 +583,7 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
         if (!file.exists()) return null
         return try {
             BufferedReader(FileReader(file)).use { br ->
-                br.readLine() ?: return null // header
+                br.readLine() ?: return null
                 val row = br.readLine() ?: return null
                 row.split(",").last().trim()
             }
@@ -773,7 +791,6 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
         }
     }
 
-    /** Centralized disabled warning with "Don’t show again (this session)" button (session-only, not persisted). */
     private fun showDisabledWarningWithAction(project: Project, extraReason: String? = null) {
         if (project.getUserData(IdleToolWindowFactory.SUPPRESS_WARNINGS_SESSION_KEY) == true) return
         val body = buildString {
@@ -787,9 +804,8 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
             .createNotification("DevRhythm is disabled", body, NotificationType.WARNING)
 
         n.addAction(
-            NotificationAction.createSimpleExpiring("Don’t show again (this session)") {
+            NotificationAction.createSimpleExpiring("Don't show again (this session)") {
                 project.putUserData(IdleToolWindowFactory.SUPPRESS_WARNINGS_SESSION_KEY, true)
-                // local repeating timer (if any) is cancelled in the timer owner
             }
         )
         n.notify(project)

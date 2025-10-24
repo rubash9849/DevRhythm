@@ -14,11 +14,9 @@ class DevRhythmStatusBarWidgetFactory : StatusBarWidgetFactory {
     override fun getDisplayName(): String = "DevRhythm Status"
 
     /**
-     * First-run friendly availability:
-     *  - If the project is "disabled", never show.
-     *  - If STATUS_KEY cached, honor it strictly.
-     *  - If no cache yet (brand-new project), return TRUE so the widget is created;
-     *    IdleTracker will enforce "Do not Show" shortly after.
+     * Widget visibility control - public API (not internal).
+     * Returns false when widget should be hidden, true when it should be shown.
+     * The IDE automatically handles widget lifecycle based on this return value.
      */
     override fun isAvailable(project: Project): Boolean {
         if (project.getUserData(IdleToolWindowFactory.DISABLED_KEY) == true) return false
@@ -41,7 +39,7 @@ class DevRhythmStatusBarWidgetFactory : StatusBarWidgetFactory {
     /** Return <projectRoot>/.DevRhythm (create it if missing). */
     private fun projectDataDir(project: Project): File {
         val base = project.basePath ?: System.getProperty("user.home")
-        val dir = File(base, ".DevRhythm")
+        val dir = File(base, ".devrhythm")
         if (!dir.exists()) dir.mkdirs()
         return dir
     }
