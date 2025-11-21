@@ -1,60 +1,65 @@
 <idea-plugin>
     <id>com.devrhythm.devrhythm</id>
     <name>DevRhythm</name>
-    <version>1.0.0</version>
+    <version>1.0.2</version>
 
-    <!-- ✅ Vendor / Publisher -->
-    <vendor email="john.edwards@usu.edu" url="https://edwardsjohnmartin.github.io/people/index.html">
-        Dr. John Edwards – Utah State University
+    <vendor email="john.edwards@usu.edu"
+            url="https://edwardsjohnmartin.github.io/people/index.html">
+        Dr. John Edwards — Utah State University
     </vendor>
 
-    <!-- ✅ Compatibility: PyCharm 2023.1 (231.*) → 2025.2 (252.*) -->
-    <idea-version since-build="231" until-build="252.*"/>
+    <idea-version since-build="241" until-build="252.*"/>
 
-    <!-- ✅ Core + PyCharm modules -->
     <depends>com.intellij.modules.platform</depends>
-    <depends>PythonCore</depends>
 
-    <!-- ✅ Description and known issue -->
     <description><![CDATA[
-        <h2>DevRhythm — Understanding Coding Rhythm in Programming Courses</h2>
+        <h2>DevRhythm — Coding Rhythm & Idle Analytics</h2>
+        <p><b>DevRhythm</b> tracks coding activity, idle behavior, project engagement,
+        and provides rich analytics for research in programming education.</p>
 
-        <p><b>DevRhythm</b> is a lightweight PyCharm/IntelliJ plugin developed for research on
-        programmer activity rhythms and self-regulated learning behavior.
-        It records coding and idle events to help analyze work–rest balance during programming sessions.</p>
-
+        <h3>Features:</h3>
         <ul>
-            <li>Tracks active vs idle time in real time</li>
-            <li>Logs data to a <code>.devrhythm</code> folder in each project</li>
-            <li>Displays a live status-bar indicator</li>
-            <li>Works on Windows, macOS, and Linux</li>
+            <li>Real-time coding activity tracking</li>
+            <li>Idle time detection and analysis</li>
+            <li>Project engagement metrics</li>
+            <li>Status bar widget for quick monitoring</li>
+            <li>Dedicated tool window for detailed analytics</li>
         </ul>
-
-        <h3>Research Team</h3>
-        <p>Developed by <b>Rubash Mali</b>, under the supervision of <b>Dr. John Edwards</b>
-        at Utah State University.</p>
-
+        <h3>Development Team:</h3>
+        <p>Developed by <b>Rubash Mali</b> under the supervision of <b>Dr. John Edwards</b> at Utah State University.</p>
+        <h3>Privacy Notice:</h3>
+        <p>This plugin collects coding activity data for research purposes in programming education.
+        Data is stored locally in a .devrhythm folder within each project.</p>
     ]]></description>
 
     <change-notes><![CDATA[
+        <h3>Version 1.0.2</h3>
         <ul>
-            <li>Initial research release of DevRhythm.</li>
-            <li>Implements real-time activity logging and status-bar feedback.</li>
+            <li>Improved PyCharm compatibility</li>
+            <li>Removed unused dependencies</li>
+            <li>Optimized IdleTracker lifecycle</li>
+            <li>Fixed status bar widget loading</li>
         </ul>
     ]]></change-notes>
 
-    <!-- ✅ Extensions -->
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Status bar widget -->
+
+        <!-- Status Bar Widget -->
         <statusBarWidgetFactory
-                id="com.devrhythm.statusbar"
-                implementation="com.devrhythm.DevRhythmStatusBarWidgetFactory"/>
+                implementation="com.devrhythm.DevRhythmStatusBarWidgetFactory"
+                id="DevRhythmStatusWidget"
+                order="first"/>
 
-        <!-- Tracker startup -->
-        <postStartupActivity
-                implementation="com.devrhythm.IdleTracker"/>
+        <!-- Startup Activity -->
+        <postStartupActivity implementation="com.devrhythm.IdleTracker"/>
 
-        <!-- Balloon notifications -->
+        <!-- Idle Tool Window -->
+        <toolWindowFactory
+                id="DevRhythmIdle"
+                anchor="right"
+                factoryClass="com.devrhythm.IdleToolWindowFactory"/>
+
+        <!-- Notifications -->
         <notificationGroup
                 id="DevRhythm"
                 displayType="BALLOON"

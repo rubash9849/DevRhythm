@@ -1,50 +1,50 @@
-# DevRhythm
+DevRhythm
 
-**DevRhythm** is a lightweight research-oriented PyCharm/IntelliJ plugin that tracks developers’ coding and idle activity patterns.  
+DevRhythm is a lightweight research-oriented PyCharm/IntelliJ plugin that tracks developers’ coding and idle activity patterns.
 It helps researchers and educators study how programming rhythm and self-regulation evolve during software development sessions.
 
----
+🎯 Purpose
 
-## 🎯 Purpose
-
-This plugin is part of an ongoing research initiative at **Utah State University**, led by **Dr. John Edwards** and developed by **Rubash Mali**, focused on exploring **self-regulated learning behaviors** in programming contexts.
+This plugin is part of an ongoing research initiative at Utah State University, led by Dr. John Edwards and developed by Rubash Mali, focused on exploring self-regulated learning behaviors in programming contexts.
 
 DevRhythm provides insights into:
 
-- Coding rhythm and time distribution  
-- Break frequency and duration  
-- Active vs. idle intervals during programming sessions  
-- Data collection for educational and cognitive analysis
+Coding rhythm and time distribution
 
----
+Break frequency and duration
 
-## ⚙️ Features
+Active vs. idle intervals during programming sessions
 
-- 🧠 Tracks **active vs. idle** developer time in real time  
-- 🪶 Logs data into a project-level folder named `.devrythm`  
-- 🧾 Generates timestamped CSV logs for research or personal analytics  
-- 💡 Displays a **status-bar widget** that updates between “Active” and “Idle” states  
-- 🌐 Works on **Windows**, **macOS**, and **Linux**
+Data collection for educational and cognitive analysis
 
----
+⚙️ Features
 
-## 🧩 Installation
+🧠 Tracks active vs. idle developer time in real time
 
-### 🔹 From Disk
-1. Download `DevRythm-1.0.0.zip`
-2. Open **PyCharm → Settings → Plugins → ⚙ → Install plugin from disk...**
-3. Select the ZIP and restart your IDE
+🪶 Logs data into a project-level folder named .devrythm
 
-### 🔹 From Marketplace
-Once approved, search **“DevRhythm”** in the *JetBrains Marketplace* inside PyCharm or visit  
-[https://plugins.jetbrains.com](https://plugins.jetbrains.com).
+🧾 Generates timestamped CSV logs for research or personal analytics
 
+💡 Displays a status-bar widget that updates between “Active” and “Idle” states
 
----
+🌐 Works on Windows, macOS, and Linux
 
-## 📬 Contact
+🔧 Updated for PyCharm 2024–2025 with deprecated API fixes and improved IntelliJ Platform compatibility (241–252.*)
 
-For academic or research inquiries:  
-📧 **john.edwards@usu.edu**
+🧩 Installation
+🔹 From Disk
 
----
+Download DevRythm-1.0.2.zip
+
+Open PyCharm → Settings → Plugins → ⚙ → Install plugin from disk...
+
+Select the ZIP and restart your IDE
+
+🔹 From Marketplace
+
+https://plugins.jetbrains.com/plugin/28806-devrhythm
+
+📬 Contact
+
+For academic or research inquiries:
+📧 john.edwards@usu.edu

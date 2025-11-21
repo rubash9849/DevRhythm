@@ -5,33 +5,20 @@ plugins {
 }
 
 group = "com.devrhythm"
-version = "1.0.0"
+version = "1.0.2"
 
 repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation(kotlin("stdlib"))
-}
-
 intellij {
-    version = "2023.3.7"
-    type = "PC" // PyCharm Community
-    plugins = listOf("python-ce")
+    version.set("2024.1")
+    type.set("PC") // PyCharm Community Edition
+    plugins.set(listOf())
+    instrumentCode.set(false)
 
-    // ✅ Fix: sandboxDir expects a string path
-    sandboxDir.set("sandbox")
-}
-
-tasks {
-    patchPluginXml {
-        sinceBuild.set("231")
-        untilBuild.set("252.*")
-    }
-    buildSearchableOptions {
-        enabled = false
-    }
+    // Sandbox directory
+    sandboxDir.set("D:/devrhythm-sandbox")
 }
 
 java {
@@ -40,6 +27,38 @@ java {
     }
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
+// Fix Kotlin stdlib conflict warning
+configurations.all {
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk8")
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-jdk7")
+}
+
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions.jvmTarget = "17"
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs = listOf("-Xjvm-default=all")
+    }
+}
+
+tasks.patchPluginXml {
+    sinceBuild.set("241")
+    untilBuild.set("252.*")
+}
+
+tasks.buildPlugin {
+    archiveFileName.set("DevRhythm-1.0.2.zip")
+}
+
+tasks.runIde {
+    autoReloadPlugins.set(true)
+}
+
+tasks.runPluginVerifier {
+    ideVersions.set(
+        providers.gradleProperty("pluginVerifierIdeVersions").map { it.split(",") }
+    )
 }
