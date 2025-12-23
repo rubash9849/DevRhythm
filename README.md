@@ -2,7 +2,7 @@ DevRhythm
 
 DevRhythm is a lightweight research-oriented PyCharm/IntelliJ plugin that tracks developers’ coding and idle activity patterns.
 It helps researchers and educators study how programming rhythm and self-regulation evolve during software development sessions.
-
+Activity is measured using keystrokes and mouse clicks, enabling fine-grained detection of active and idle programming behavior.
 🎯 Purpose
 
 This plugin is part of an ongoing research initiative at Utah State University, led by Dr. John Edwards and developed by Rubash Mali, focused on exploring self-regulated learning behaviors in programming contexts.
@@ -26,6 +26,8 @@ Data collection for educational and cognitive analysis
 🧾 Generates timestamped CSV logs for research or personal analytics
 
 💡 Displays a status-bar widget that updates between “Active” and “Idle” states
+
+🔔 During extended inactivity, the status bar gently blinks every 5 minutes as a reminder.
 
 🌐 Works on Windows, macOS, and Linux
 

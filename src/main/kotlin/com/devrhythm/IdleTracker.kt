@@ -445,8 +445,9 @@ class IdleTracker : StartupActivity, StartupActivity.DumbAware {
 
             panel.add(javax.swing.Box.createVerticalStrut(8))
             val desc = javax.swing.JLabel(
-                "<html>Shows your <b>total active time</b> and your <b>active time in last 30 mins</b> <i>(refreshes per minute)</i>.</html>"
-            ).apply {
+                "<html>Shows your <b>total active time</b> and your <b>active time in last 30 mins</b> <i>(refreshes per minute)</i>.<br><br>" +
+                        "Activity is measured with keystrokes and mouse clicks <br>" +
+                        "See the DevRhythm Status Bar below<br></html>"            ).apply {
                 font = font.deriveFont(14f)
                 alignmentX = java.awt.Component.CENTER_ALIGNMENT
             }

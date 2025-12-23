@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.devrhythm"
-version = "1.0.2"
+version = "1.0.3"
 
 repositories {
     mavenCentral()
@@ -46,11 +46,11 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
 
 tasks.patchPluginXml {
     sinceBuild.set("241")
-    untilBuild.set("252.*")
+    untilBuild.set("253.*")
 }
 
 tasks.buildPlugin {
-    archiveFileName.set("DevRhythm-1.0.2.zip")
+    archiveFileName.set("DevRhythm-1.0.3.zip")
 }
 
 tasks.runIde {

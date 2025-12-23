@@ -38,6 +38,10 @@ class DevRhythmStatusBarWidget(private val project: Project) :
 
         // Keep recent inputs for at least the window + buffer
         private const val KEEP_MS = 40 * 60 * 1000L         // 40 minutes
+
+        // BLINKING: Added constants for blink animation
+        private const val BLINK_DELAY_MS = 500              // 500ms on/off cycle
+        private const val BLINK_COUNT_MAX = 10              // 10 blinks total
     }
 
     private var statusBar: StatusBar? = null
@@ -48,7 +52,7 @@ class DevRhythmStatusBarWidget(private val project: Project) :
     // Inputs (epochMillis) for strict CLOSED-GAP logic
     private val inputs: ArrayDeque<Long> = ArrayDeque()
 
-    // Cached “last 30 mins” text, recomputed on minute boundaries (minutes-only display)
+    // Cached "last 30 mins" text, recomputed on minute boundaries (minutes-only display)
     private var cachedLast30MinText: String = "( 0min of last 30 mins )"
     private var lastBucketIndex: Long = -1L  // floor(nowSec / 60)
 
@@ -58,6 +62,13 @@ class DevRhythmStatusBarWidget(private val project: Project) :
 
     // Guard timer to keep blank when disabled / do-not-show
     private var guardTimer: Timer? = null
+
+    // BLINKING: Added state variables for blinking animation
+    private var idleStartTime: Long? = null              // When user first went idle (ms)
+    private var blinkTimer: Timer? = null                // Timer for blinking animation
+    private var blinkCount: Int = 0                      // Current blink iteration
+    private var isBlinkVisible: Boolean = true           // Current blink visibility state
+    private var lastBlinkIntervalIndex: Int = 0          // Last 5-minute interval where we blinked
 
     override fun ID(): String = WIDGET_ID
 
@@ -82,6 +93,10 @@ class DevRhythmStatusBarWidget(private val project: Project) :
                         }
 
                         lastTotalActiveMs = totalActiveMs
+
+                        // BLINKING: Handle idle state changes
+                        handleIdleStateChange(isIdle)
+
                         lastIsIdle = isIdle
 
                         // --- Anchor recompute to true 60s boundaries ---
@@ -117,6 +132,10 @@ class DevRhythmStatusBarWidget(private val project: Project) :
                         ) return
                         inputs.addLast(epochMillis)
                         trimOldInputs(epochMillis)
+
+                        // BLINKING: Reset blinking state when user becomes active
+                        resetBlinkState()
+
                         // NOTE: we do NOT recompute here; recompute only at 60s boundaries.
                     }
                 }
@@ -140,11 +159,73 @@ class DevRhythmStatusBarWidget(private val project: Project) :
         conn = null
         guardTimer?.stop()
         guardTimer = null
+        stopBlinking()  // BLINKING: Stop blink timer on dispose
         inputs.clear()
         cachedLast30MinText = "( 0min of last 30 mins )"
         lastBucketIndex = -1L
         lastTotalActiveMs = 0L
         lastIsIdle = true
+    }
+
+    // BLINKING: New method to handle idle state transitions
+    private fun handleIdleStateChange(isIdle: Boolean) {
+        val nowMs = System.currentTimeMillis()
+
+        if (isIdle) {
+            if (idleStartTime == null) {
+                idleStartTime = nowMs
+                lastBlinkIntervalIndex = 0
+            } else {
+                val idleDurationMs = nowMs - idleStartTime!!
+                val currentIntervalIndex = (idleDurationMs / BREAK_THRESHOLD_MS).toInt()
+
+                if (currentIntervalIndex > lastBlinkIntervalIndex && currentIntervalIndex > 0) {
+                    lastBlinkIntervalIndex = currentIntervalIndex
+                    startBlinking()
+                }
+            }
+        } else {
+            resetBlinkState()
+        }
+    }
+
+    // BLINKING: New method to start blinking animation
+    private fun startBlinking() {
+        stopBlinking()
+
+        blinkCount = 0
+        isBlinkVisible = true
+
+        blinkTimer = Timer(BLINK_DELAY_MS) {
+            if (blinkCount < BLINK_COUNT_MAX * 2) {
+                isBlinkVisible = !isBlinkVisible
+                blinkCount++
+                updateLabel()
+            } else {
+                stopBlinking()
+                isBlinkVisible = true
+                updateLabel()
+            }
+        }.apply {
+            isRepeats = true
+            start()
+        }
+    }
+
+    // BLINKING: New method to stop blinking animation
+    private fun stopBlinking() {
+        blinkTimer?.stop()
+        blinkTimer = null
+        blinkCount = 0
+        isBlinkVisible = true
+    }
+
+    // BLINKING: New method to reset all blinking state
+    private fun resetBlinkState() {
+        stopBlinking()
+        idleStartTime = null
+        lastBlinkIntervalIndex = 0
+        isBlinkVisible = true
     }
 
     /**
@@ -211,10 +292,15 @@ class DevRhythmStatusBarWidget(private val project: Project) :
             return
         }
 
+        // BLINKING: Modified to handle blink states
         val dot = if (lastIsIdle) {
-            "<span style='color:red'>●</span>"
+            if (blinkTimer != null && !isBlinkVisible) {
+                "<span style='color:red'>○</span>"  // Hollow during blink-off
+            } else {
+                "<span style='color:red'>●</span>"  // Solid red when idle
+            }
         } else {
-            "<span style='color:green'>●</span>"
+            "<span style='color:green'>●</span>"    // Green when active
         }
 
         val activeText = formatHmRounded(lastTotalActiveMs)
@@ -236,6 +322,7 @@ class DevRhythmStatusBarWidget(private val project: Project) :
             cachedLast30MinText = "( 0min of last 30 mins )"
             lastBucketIndex = -1L
         }
+        resetBlinkState()  // BLINKING: Added reset call
         this@DevRhythmStatusBarWidget.statusBar?.updateWidget(WIDGET_ID)
     }
 
